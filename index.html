@@ -147,8 +147,8 @@
     *{transition:none!important}
     .lg img,.lg .flash,.ld .bar i{animation-duration:.01s!important;animation-delay:0s!important}
   }
-  .canvas-box{max-width:min(100%,calc(70vh * .625));margin:0 auto}
-  .stage-bar,.stage .save-row{max-width:min(100%,calc(70vh * .625));margin-left:auto;margin-right:auto}
+  .canvas-box{max-width:min(100%,calc(68vh * .647));margin:0 auto}
+  .stage-bar,.stage .save-row{max-width:min(100%,calc(68vh * .647));margin-left:auto;margin-right:auto}
   .side{display:flex;border:1px solid var(--line)}
   .side button{border:0;background:#fff;color:var(--muted);font:700 12px var(--font);padding:7px 14px;cursor:pointer;letter-spacing:0}
   .side button[aria-pressed=true]{background:var(--ink);color:#fff}
@@ -277,6 +277,11 @@
         <button type="button" class="btn" data-save="both">앞뒤 한 장</button>
       </div>
       <div class="btns save-row" style="margin-top:6px">
+        <button type="button" class="btn" data-print="front">인쇄용 앞면</button>
+        <button type="button" class="btn" data-print="back">인쇄용 뒷면</button>
+      </div>
+      <p class="hint save-row" style="margin-top:6px">인쇄용: 작업 58×90mm · 재단 54×86mm · 300dpi (685×1063px). 글자와 사진은 모두 재단선 안쪽에 있고, 배경색만 작업 사이즈까지 채워집니다. 목걸이 구멍 표시는 인쇄용에서 빠져요.</p>
+      <div class="btns save-row" style="margin-top:6px">
         <button type="button" class="btn ghost" id="reset" style="flex:1">전체 비우기</button>
       </div>
     </div>
@@ -348,11 +353,11 @@ const OOC=`*[OOC: 진행 중인 롤플레이를 잠시 멈춘다. 아래는 판�
 ]*`;
 
 /* ===================== 랜덤 코드 ===================== */
-const CH="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const CODE_CH="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function randCode(){
   const a=new Uint32Array(8);
   (window.crypto&&crypto.getRandomValues)?crypto.getRandomValues(a):a.forEach((_,i)=>a[i]=Math.random()*1e9);
-  const s=[...a].map(n=>CH[n%CH.length]).join("");
+  const s=[...a].map(n=>CODE_CH[n%CODE_CH.length]).join("");
   return `BF-${s.slice(0,4)}-${s.slice(4,8)}`;
 }
 
@@ -361,16 +366,18 @@ const blank=()=>({name:"",title:"",guild:"",pos:"",level:"",race:"",cls:"",role:
 const S=Object.assign(blank(),{code:randCode(),side:"front",img:null,nw:0,nh:0,scale:1,tx:0,ty:0});
 
 /* ===================== 카드 상수 ===================== */
-const CARD={w:1000,h:1600};
+/* 카드 = 재단 사이즈 54×86mm 비율. 카드 좌표 920 × 1465 (1mm ≈ 17px) */
+const MM_W=54, MM_H=86, BLEED=2, DPI=300;
+const CW=920, CH=Math.round(CW*MM_H/MM_W);
+const OX=40, OY=40;
+const CARD={w:CW+OX*2,h:CH+OY*2};
 const W=CARD.w, H=CARD.h, DS=2, ES=2;
 const BLUE="#1F4BFF", INK="#0B0D12", GRAY="#6B7280", SOFT="#A3A9B4", LN="#E4E6EB", PAGE="#F4F5F8";
 const F='"Pretendard Variable","Pretendard Full",Pretendard,-apple-system,system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif';
 const EN=`"Archivo",${F}`;
 const MONO='ui-monospace,"SFMono-Regular","Roboto Mono",Menlo,Consolas,"Liberation Mono",monospace';
-const K={x:40,y:40,w:920,h:1520};
-const PX=96, RIGHT=904, IW=RIGHT-PX;
-/* 실제 증명사진 3×4cm 비율·크기 (카드 폭 54mm 기준 → 약 17px/mm) */
-const PHOTO={x:PX,y:236,w:450,h:600};   /* 3×4 */
+const PX=56, RIGHT=CW-56, IW=RIGHT-PX;          /* 안전 여백 56 ≈ 3.3mm */
+const PHOTO={x:PX,y:178,w:450,h:600};           /* 증명사진 3×4 */
 
 const cv=document.getElementById("card"), ctx=cv.getContext("2d");
 cv.width=W*DS; cv.height=H*DS;
@@ -442,25 +449,19 @@ function fitImg(){ if(!S.img) return; S.scale=minS();
   S.tx=(PHOTO.w-S.nw*S.scale)/2; S.ty=(PHOTO.h-S.nh*S.scale)/2; clampV(); }
 
 /* ===================== 렌더 ===================== */
-function base(c,th){
-  c.fillStyle=PAGE; c.fillRect(0,0,W,H);
-  c.save(); c.shadowColor="rgba(11,13,18,.14)"; c.shadowBlur=40; c.shadowOffsetY=12;
-  rr(c,K.x,K.y,K.w,K.h,36); c.fillStyle=th.bg; c.fill(); c.restore();
-  if(th.border){ c.strokeStyle=LN; c.lineWidth=1; rr(c,K.x+.5,K.y+.5,K.w-1,K.h-1,36); c.stroke(); }
-}
+/* 모든 그리기는 카드 좌표(0,0 ~ CW,CH = 재단선) 기준 */
+function fillBg(c,th){ c.fillStyle=th.bg; c.fillRect(-200,-200,CW+400,CH+400); }
 function hole(c,th){
-  rr(c,W/2-64,78,128,20,10); c.fillStyle=PAGE; c.fill();
-  c.strokeStyle=th.line; c.lineWidth=1; rr(c,W/2-63.5,78.5,127,19,9.5); c.stroke();
+  rr(c,CW/2-64,38,128,20,10); c.fillStyle=PAGE; c.fill();
+  c.strokeStyle=th.line; c.lineWidth=1; rr(c,CW/2-63.5,38.5,127,19,9.5); c.stroke();
 }
 
-function drawFront(c){
-  const th=theme(); base(c,th);
-  c.save(); rr(c,K.x,K.y,K.w,K.h,36); c.clip();
-  c.globalAlpha=.07; spark(c,RIGHT+10,K.y+K.h-150,200,280,-.24,th.fg); c.restore();
-  hole(c,th);
+function drawFront(c,th){
+  fillBg(c,th);
+  c.save(); c.globalAlpha=.07; spark(c,RIGHT+10,CH-150,200,280,-.24,th.fg); c.restore();
 
   /* 상단 */
-  const ty=168;
+  const ty=118;
   spark(c,PX+8,ty-6,8,12,-.24,th.mark);
   T(c,"BLUE FAIRY",PX+26,ty,{font:`800 16px ${EN}`,fill:th.fg,stretch:"expanded",spacing:.4});
   T(c,"GUILD MEMBER",RIGHT,ty-1,{font:`800 10.5px ${EN}`,fill:th.sub,spacing:2.6,align:"right"});
@@ -494,12 +495,12 @@ function drawFront(c){
 
   /* 이름 · 칭호 */
   const nm=S.name||"닉네임";
-  T(c,nm,PX-3,940,{font:fitF(c,nm,IW,66,28,`900 %S%px ${F}`,-1.6),fill:S.name?th.fg:th.faint,spacing:-1.6});
+  T(c,nm,PX-3,880,{font:fitF(c,nm,IW,66,28,`900 %S%px ${F}`,-1.6),fill:S.name?th.fg:th.faint,spacing:-1.6});
   const tt=S.title?`〈 ${S.title} 〉`:"〈 칭호 〉";
-  T(c,tt,PX,988,{font:`700 21px ${F}`,fill:S.title?th.mark:th.faint});
+  T(c,tt,PX,928,{font:`700 21px ${F}`,fill:S.title?th.mark:th.faint});
 
   /* 길드 · 지역 · 콘텐츠 */
-  const gy=1028, cw=IW/3;
+  const gy=968, cw=IW/3;
   hr(c,PX,gy,IW,th.line); hr(c,PX,gy+118,IW,th.line);
   [["GUILD",S.guild],["REGION",S.region],["MAIN",S.main]].forEach(([lb,v],i)=>{
     const x=PX+i*cw, px=x+(i?26:0), val=v||"—";
@@ -515,45 +516,68 @@ function drawFront(c){
   });
 
   /* 코드 + 작은 바코드 */
-  T(c,"MEMBER CODE",PX,1282,{font:`800 10.5px ${EN}`,fill:th.sub,spacing:2.6});
-  T(c,S.code,PX,1328,{font:`600 27px ${MONO}`,fill:th.fg,spacing:2});
-  drawBarcode(c,RIGHT-250,1260,250,70,S.code,th.fg);
+  T(c,"MEMBER CODE",PX,1158,{font:`800 10.5px ${EN}`,fill:th.sub,spacing:2.6});
+  T(c,S.code,PX,1204,{font:`600 27px ${MONO}`,fill:th.fg,spacing:2});
+  drawBarcode(c,RIGHT-250,1136,250,70,S.code,th.fg);
 
-  T(c,"LASPERA  ·  GUILD SYSTEM",W/2,1506,{font:`800 10px ${EN}`,fill:th.faint,spacing:2.8,align:"center"});
+  T(c,"LASPERA  ·  GUILD SYSTEM",CW/2,1376,{font:`800 10px ${EN}`,fill:th.faint,spacing:2.8,align:"center"});
 }
 
-function drawBack(c){
-  const th=theme(); base(c,th);
-  /* 마그네틱 띠 */
-  c.save(); rr(c,K.x,K.y,K.w,K.h,36); c.clip();
-  c.fillStyle=th.band; c.fillRect(K.x,150,K.w,96);
+function drawBack(c,th){
+  fillBg(c,th);
+  const cx=CW/2, oy=470;
+
+  /* 상단 */
+  T(c,"GUILD MEMBER CARD",PX,118,{font:`800 10.5px ${EN}`,fill:th.sub,spacing:2.6});
+  T(c,S.code,RIGHT,118,{font:`600 15px ${MONO}`,fill:th.sub,align:"right",spacing:1.5});
+  hr(c,PX,146,IW,th.line);
+
+  /* 궤도 문양 */
+  c.save(); c.strokeStyle=th.line; c.lineWidth=1.4;
+  c.beginPath(); c.arc(cx,oy,232,0,Math.PI*2); c.stroke();
+  c.beginPath(); c.arc(cx,oy,112,0,Math.PI*2); c.stroke();
+  c.setLineDash([2,9]); c.lineCap="round"; c.lineWidth=2;
+  c.beginPath(); c.arc(cx,oy,172,0,Math.PI*2); c.stroke();
   c.restore();
-  hole(c,th);
+  const dot=(r,a,size,col)=>{ c.beginPath(); c.arc(cx+Math.cos(a)*r,oy+Math.sin(a)*r,size,0,Math.PI*2); c.fillStyle=col; c.fill(); };
+  dot(232,-.62,6,th.mark); dot(172,2.45,4.5,th.fg); dot(232,3.9,3.5,th.sub); dot(112,1.1,3,th.sub);
+  spark(c,cx,oy,42,64,-.24,th.mark);
+  spark(c,cx+138,oy-158,8,12,-.24,th.sub);
+  spark(c,cx-176,oy+122,6,9,-.24,th.sub);
 
-  /* 로고 */
-  spark(c,W/2,486,30,46,-.24,th.mark);
-  const lf=`900 88px ${EN}`;
-  T(c,"BLUE",W/2,632,{font:lf,fill:th.fg,align:"center",stretch:"expanded",spacing:-1});
-  T(c,"FAIRY",W/2,716,{font:lf,fill:th.fg,align:"center",stretch:"expanded",spacing:-1});
-  T(c,"GUILD MEMBER CARD",W/2,800,{font:`800 12px ${EN}`,fill:th.sub,spacing:3.4,align:"center"});
+  /* 워드마크 */
+  T(c,"BLUE FAIRY",cx,792,{font:`800 32px ${EN}`,fill:th.fg,align:"center",stretch:"expanded",spacing:6});
+  T(c,"LASPERA  ·  SINCE 2012",cx,830,{font:`800 10px ${EN}`,fill:th.faint,align:"center",spacing:3});
 
-  /* 길드명 */
+  /* 길드 */
+  c.fillStyle=th.mark; c.fillRect(cx-20,880,40,2);
+  T(c,"GUILD",cx,930,{font:`800 10.5px ${EN}`,fill:th.sub,align:"center",spacing:2.6});
   const g=S.guild||"길드명";
-  T(c,g,W/2,930,{font:fitF(c,g,IW,52,22,`900 %S%px ${F}`,-1),fill:S.guild?th.fg:th.faint,align:"center",spacing:-1});
-  const nm=[S.name||"닉네임",S.pos].filter(Boolean).join("  ·  ");
-  T(c,nm,W/2,976,{font:`600 18px ${F}`,fill:S.name?th.sub:th.faint,align:"center"});
+  T(c,g,cx,994,{font:fitF(c,g,IW,52,22,`900 %S%px ${F}`,-1),fill:S.guild?th.fg:th.faint,align:"center",spacing:-1});
+  const who=[S.name||"닉네임",S.pos].filter(Boolean).join("  ·  ");
+  T(c,who,cx,1034,{font:`600 17px ${F}`,fill:S.name?th.sub:th.faint,align:"center"});
 
-  /* 바코드 패널 */
-  const bx=120, by=1068, bw=760, bh=272;
-  rr(c,bx,by,bw,bh,18); c.fillStyle="#FFFFFF"; c.fill();
-  if(th.border){ c.strokeStyle=LN; c.lineWidth=1; rr(c,bx+.5,by+.5,bw-1,bh-1,18); c.stroke(); }
-  drawBarcode(c,bx+48,by+40,bw-96,148,S.code,INK);
-  T(c,S.code,W/2,by+bh-38,{font:`600 26px ${MONO}`,fill:INK,align:"center",spacing:6});
+  /* 바코드 */
+  drawBarcode(c,cx-240,1104,480,84,S.code,th.fg);
+  T(c,S.code,cx,1230,{font:`600 21px ${MONO}`,fill:th.fg,align:"center",spacing:7});
 
-  /* 안내 문구 */
-  T(c,"본 카드는 블루페어리 길드 소속을 증명합니다.",W/2,1420,{font:`600 15px ${F}`,fill:th.sub,align:"center"});
-  T(c,"습득하신 분은 가까운 길드 사무소로 돌려주세요.",W/2,1448,{font:`600 15px ${F}`,fill:th.sub,align:"center"});
-  T(c,"LASPERA  ·  GUILD SYSTEM",W/2,1506,{font:`800 10px ${EN}`,fill:th.faint,spacing:2.8,align:"center"});
+  /* 안내 */
+  T(c,"본 카드는 블루페어리 길드 소속을 증명합니다.",cx,1302,{font:`500 13px ${F}`,fill:th.faint,align:"center"});
+  T(c,"습득하신 분은 가까운 길드 사무소로 돌려주세요.",cx,1326,{font:`500 13px ${F}`,fill:th.faint,align:"center"});
+  spark(c,cx,1376,5,8,-.24,th.faint);
+}
+
+/* 미리보기 · 일반 저장용: 둥근 카드 목업 */
+function drawMock(c,side){
+  const th=theme();
+  c.fillStyle=PAGE; c.fillRect(0,0,W,H);
+  c.save(); c.shadowColor="rgba(11,13,18,.14)"; c.shadowBlur=40; c.shadowOffsetY=12;
+  rr(c,OX,OY,CW,CH,34); c.fillStyle=th.bg; c.fill(); c.restore();
+  c.save(); rr(c,OX,OY,CW,CH,34); c.clip(); c.translate(OX,OY);
+  (side==="back"?drawBack:drawFront)(c,th);
+  c.restore();
+  if(th.border){ c.strokeStyle=LN; c.lineWidth=1; rr(c,OX+.5,OY+.5,CW-1,CH-1,34); c.stroke(); }
+  c.save(); c.translate(OX,OY); hole(c,th); c.restore();
 }
 
 let queued=false;
@@ -563,7 +587,7 @@ function render(){
     queued=false;
     ctx.setTransform(DS,0,0,DS,0,0);
     ctx.clearRect(0,0,W,H);
-    (S.side==="back"?drawBack:drawFront)(ctx);
+    drawMock(ctx,S.side);
     document.getElementById("zI").textContent=S.img?Math.round(S.scale/minS()*100)+"%":"—";
     document.getElementById("codeView").textContent=S.code;
   });
@@ -669,7 +693,7 @@ const box=$("#box");
 box.addEventListener("drop",e=>{ const f=e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) loadFile(f); });
 
 const toCard=e=>{ const r=cv.getBoundingClientRect();
-  return {x:(e.clientX-r.left)*(W/r.width), y:(e.clientY-r.top)*(H/r.height)}; };
+  return {x:(e.clientX-r.left)*(W/r.width)-OX, y:(e.clientY-r.top)*(H/r.height)-OY}; };
 const onPhoto=p=>S.side==="front" && p.x>=PHOTO.x && p.x<=PHOTO.x+PHOTO.w && p.y>=PHOTO.y && p.y<=PHOTO.y+PHOTO.h;
 const pts=new Map(); let last=null, pinch=null, act=false;
 cv.addEventListener("touchstart",e=>{
@@ -708,20 +732,51 @@ document.querySelectorAll("[data-z]").forEach(b=>{ b.onclick=()=>{
   if(op==="+") zoomAt(ctr,1.15); else if(op==="-") zoomAt(ctr,1/1.15); else { fitImg(); render(); } }; });
 
 /* ===================== 내보내기 ===================== */
+const fileBase=()=>`bluefairy_guildcard_${(S.name||"member").replace(/[\\/:*?"<>|\s]+/g,"_")}`;
+function download(blob,nm,msg){
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=nm; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000); toast(msg||"PNG로 저장했어요");
+}
 function savePNG(which){
   const off=document.createElement("canvas"), oc=off.getContext("2d");
   const both=which==="both";
   off.width=(both?W*2:W)*ES; off.height=H*ES;
   oc.setTransform(ES,0,0,ES,0,0);
-  if(which==="back") drawBack(oc);
-  else drawFront(oc);
-  if(both){ oc.setTransform(ES,0,0,ES,W*ES,0); drawBack(oc); }
-  const nm=`bluefairy_guildcard_${(S.name||"member").replace(/[\\/:*?"<>|\s]+/g,"_")}_${which}.png`;
-  if(off.toBlob){ off.toBlob(b=>{ if(!b){ toast("저장에 실패했어요"); return; }
-    const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=nm; a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),2000); toast("PNG로 저장했어요"); },"image/png"); }
-  else{ const a=document.createElement("a"); a.href=off.toDataURL("image/png"); a.download=nm; a.click(); toast("PNG로 저장했어요"); }
+  drawMock(oc,which==="back"?"back":"front");
+  if(both){ oc.setTransform(ES,0,0,ES,W*ES,0); drawMock(oc,"back"); }
+  off.toBlob(b=>{ if(!b){ toast("저장에 실패했어요"); return; } download(b,`${fileBase()}_${which}.png`); },"image/png");
 }
+
+/* 인쇄용: 작업 58×90mm (재단 54×86 + 사방 2mm), 300dpi, 재단선 표시 없음 */
+const CRC=(()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(u8){ let c=0xFFFFFFFF; for(let i=0;i<u8.length;i++) c=CRC[(c^u8[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+async function withDPI(blob,dpi){            /* PNG에 해상도 정보(pHYs) 기록 → 편집 프로그램에서 58×90mm로 열림 */
+  const src=new Uint8Array(await blob.arrayBuffer());
+  const ppm=Math.round(dpi/0.0254);
+  const chunk=new Uint8Array(21), dv=new DataView(chunk.buffer);
+  dv.setUint32(0,9); chunk.set([0x70,0x48,0x59,0x73],4);
+  dv.setUint32(8,ppm); dv.setUint32(12,ppm); chunk[16]=1;
+  dv.setUint32(17,crc32(chunk.subarray(4,17)));
+  const at=33;                               /* PNG 서명 8 + IHDR 25 */
+  const out=new Uint8Array(src.length+21);
+  out.set(src.subarray(0,at),0); out.set(chunk,at); out.set(src.subarray(at),at+21);
+  return new Blob([out],{type:"image/png"});
+}
+function savePrint(side){
+  const pxmm=DPI/25.4;
+  const wpx=Math.round((MM_W+BLEED*2)*pxmm), hpx=Math.round((MM_H+BLEED*2)*pxmm);
+  const off=document.createElement("canvas"), oc=off.getContext("2d");
+  off.width=wpx; off.height=hpx;
+  const th=theme(), k=MM_W*pxmm/CW, bp=BLEED*pxmm;
+  oc.fillStyle=th.bg; oc.fillRect(0,0,wpx,hpx);
+  oc.setTransform(k,0,0,k,bp,bp);
+  (side==="back"?drawBack:drawFront)(oc,th);
+  off.toBlob(async b=>{ if(!b){ toast("저장에 실패했어요"); return; }
+    let out=b; try{ out=await withDPI(b,DPI); }catch{}
+    download(out,`${fileBase()}_${side}_58x90mm.png`,"인쇄용 PNG로 저장했어요");
+  },"image/png");
+}
+document.querySelectorAll("[data-print]").forEach(b=>b.onclick=()=>savePrint(b.dataset.print));
 document.querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>savePNG(b.dataset.save));
 $("#reset").onclick=()=>{ Object.assign(S,blank()); syncAll(); render(); toast("전체를 비웠어요"); };
 
