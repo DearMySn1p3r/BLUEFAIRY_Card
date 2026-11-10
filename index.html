@@ -490,6 +490,7 @@ function drawFront(c,th){
   T(c,"BLUE FAIRY",PX+26,ty,{font:`800 16px ${EN}`,fill:th.fg,stretch:"expanded",spacing:.4});
   T(c,"GUILD MEMBER",RIGHT,ty-1,{font:`800 10.5px ${EN}`,fill:th.sub,spacing:2.6,align:"right"});
 
+  EDIT(c,{sel:"#colorChips",label:"카드 색"},0,0,CW,170);
   /* 사진 (3×4) */
   const p=PHOTO;
   c.save(); c.beginPath(); c.rect(p.x,p.y,p.w,p.h); c.clip();
@@ -511,6 +512,7 @@ function drawFront(c,th){
   [["LEVEL",lv?`Lv.${lv}`:""],["CLASS",[S.race,S.cls].filter(Boolean).join(" · ")],["ROLE",S.role],["POSITION",S.pos]]
   .forEach(([lb,v],i)=>{
     const y=p.y+i*rh;
+    EDIT(c,{sel:`[data-f="${["level","cls","role","pos"][i]}"]`,label:["레벨","클래스","역할","직위"][i]},rx,y,rw,rh);
     if(i) hr(c,rx,y,rw,th.line);
     T(c,lb,rx,y+(i?44:30),{font:`800 10.5px ${EN}`,fill:th.sub,spacing:2.4});
     const val=v||"—";
@@ -518,7 +520,10 @@ function drawFront(c,th){
   });
 
   /* 이름 · 칭호 */
+  EDIT(c,{img:{file:"#fileImg",fit:'[data-z="0"]',clear:"#clearImg"},has:()=>!!S.img,label:"증명사진"},p.x,p.y,p.w,p.h);
   const nm=S.name||"닉네임";
+  EDIT(c,{sel:'[data-f="name"]',label:"닉네임"},PX,820,IW,72);
+  EDIT(c,{sel:'[data-f="title"]',label:"칭호"},PX,900,IW,40);
   T(c,nm,PX-3,880,{font:fitF(c,nm,IW,66,28,`900 %S%px ${F}`,-1.6),fill:S.name?th.fg:th.faint,spacing:-1.6});
   const tt=S.title?`〈 ${S.title} 〉`:"〈 칭호 〉";
   T(c,tt,PX,928,{font:`700 21px ${F}`,fill:S.title?th.mark:th.faint});
@@ -528,6 +533,7 @@ function drawFront(c,th){
   hr(c,PX,gy,IW,th.line); hr(c,PX,gy+118,IW,th.line);
   [["GUILD",S.guild],["REGION",S.region],["MAIN",S.main]].forEach(([lb,v],i)=>{
     const x=PX+i*cw, px=x+(i?26:0), val=v||"—";
+    EDIT(c,{sel:`[data-f="${["guild","region","main"][i]}"]`,label:["길드","주 활동 지역","주 콘텐츠"][i]},x,gy,cw,118);
     if(i){ c.fillStyle=th.line; c.fillRect(x,gy+22,1,74); }
     T(c,lb,px,gy+40,{font:`800 10.5px ${EN}`,fill:th.sub,spacing:2.4});
     if(i===0 && v){
@@ -540,6 +546,8 @@ function drawFront(c,th){
   });
 
   /* 코드 + 작은 바코드 */
+  EDIT(c,{actions:[["새 코드 생성","#newCode"]],label:"회원 코드"},PX,1126,IW,90);
+  EDIT(c,{sel:"#colorChips",label:"카드 색"},0,1250,CW,CH-1250);
   T(c,"MEMBER CODE",PX,1158,{font:`800 10.5px ${EN}`,fill:th.sub,spacing:2.6});
   T(c,S.code,PX,1204,{font:`600 27px ${MONO}`,fill:th.fg,spacing:2});
   drawBarcode(c,RIGHT-250,1136,250,70,S.code,th.fg);
@@ -556,6 +564,8 @@ function drawBack(c,th){
   T(c,S.code,RIGHT,118,{font:`600 15px ${MONO}`,fill:th.sub,align:"right",spacing:1.5});
   hr(c,PX,146,IW,th.line);
 
+  EDIT(c,{actions:[["새 코드 생성","#newCode"]],label:"회원 코드"},RIGHT-260,96,260,32);
+  EDIT(c,{sel:"#colorChips",label:"카드 색"},PX,220,IW,620);
   /* 궤도 문양 */
   c.save(); c.strokeStyle=th.line; c.lineWidth=1.4;
   c.beginPath(); c.arc(cx,oy,232,0,Math.PI*2); c.stroke();
@@ -577,11 +587,14 @@ function drawBack(c,th){
   c.fillStyle=th.mark; c.fillRect(cx-20,880,40,2);
   T(c,"GUILD",cx,930,{font:`800 10.5px ${EN}`,fill:th.sub,align:"center",spacing:2.6});
   const g=S.guild||"길드명";
+  EDIT(c,{sel:'[data-f="guild"]',label:"길드"},PX,946,IW,62);
   T(c,g,cx,994,{font:fitF(c,g,IW,52,22,`900 %S%px ${F}`,-1),fill:S.guild?th.fg:th.faint,align:"center",spacing:-1});
   const who=[S.name||"닉네임",S.pos].filter(Boolean).join("  ·  ");
+  EDIT(c,{sel:'[data-f="name"]',label:"닉네임"},PX,1012,IW,32);
   T(c,who,cx,1034,{font:`600 17px ${F}`,fill:S.name?th.sub:th.faint,align:"center"});
 
   /* 바코드 */
+  EDIT(c,{actions:[["새 코드 생성","#newCode"]],label:"회원 코드"},cx-260,1096,520,150);
   drawBarcode(c,cx-240,1104,480,84,S.code,th.fg);
   T(c,S.code,cx,1230,{font:`600 21px ${MONO}`,fill:th.fg,align:"center",spacing:7});
 
@@ -604,12 +617,14 @@ function drawMock(c,side){
   c.save(); c.translate(OX,OY); hole(c,th); c.restore();
 }
 
+const EDIT=(...a)=>window.HIT&&window.HIT(...a);
 let queued=false;
 function render(){
   if(queued) return; queued=true;
   requestAnimationFrame(()=>{
     queued=false;
     ctx.setTransform(DS,0,0,DS,0,0);
+    window.HIT&&window.HIT.reset();
     ctx.clearRect(0,0,W,H);
     drawMock(ctx,S.side);
     document.getElementById("zI").textContent=S.img?Math.round(S.scale/minS()*100)+"%":"—";
@@ -872,5 +887,221 @@ if(document.fonts&&document.fonts.load){
   document.querySelectorAll("input[list]").forEach(enhance);
 })();
 </script>
+<style>
+  /* ===== 패드 · 모바일 ===== */
+  .wrap>section{min-width:0}
+  @media (max-width:1100px){
+    .stage{position:static}
+    .wrap{padding:12px;gap:12px}
+  }
+  @media (max-width:760px){
+    header{padding:10px 14px;gap:10px}
+    header .sub{display:none}
+    .tabbody{padding:2px 14px 16px}
+    .tabs{overflow-x:auto;scrollbar-width:none}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{min-width:64px;padding:13px 4px 11px}
+    .row3{grid-template-columns:1fr 1fr}
+    .row3>label:nth-child(3):last-child{grid-column:1/-1}
+    .rowb{grid-template-columns:96px 1fr}
+    .card-shell{padding:10px}
+    .stage-bar .tip{width:100%;margin:0 0 2px}
+    .zoom{flex:1;justify-content:space-between}
+  }
+  @media (max-width:1100px), (hover:none){
+    input[type=text],input[type=number],textarea{font-size:16px}   /* iOS 확대 방지 */
+    .btn{min-height:46px}
+    .chip{padding:11px 15px;font-size:13.5px}
+    .zoom button{width:38px;height:34px}
+    .cb-menu li{padding:13px 14px;font-size:15px}
+  }
+
+  /* ===== 카드 직접 편집 ===== */
+  .bf-hover{position:absolute;pointer-events:none;border:1.5px dashed var(--blue);background:rgba(31,75,255,.07);z-index:5;display:none}
+  .bf-ed{position:absolute;z-index:30;background:#fff;border:1px solid var(--line);border-top:3px solid var(--blue);
+    box-shadow:0 16px 40px rgba(11,13,18,.2),0 2px 8px rgba(11,13,18,.08);padding:10px;display:flex;flex-direction:column;gap:8px;
+    line-height:normal;animation:bfIn .14s ease-out}
+  @keyframes bfIn{from{opacity:0;transform:translateY(-4px)}}
+  .bf-ed .hd{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .bf-ed .hd b{font:800 10px var(--en);letter-spacing:.18em;color:var(--blue)}
+  .bf-ed .hd span{font-size:12.5px;font-weight:700;color:var(--ink)}
+  .bf-ed .hd .ok{border:0;background:var(--ink);color:#fff;font:700 12.5px var(--font);padding:7px 12px;cursor:pointer;min-height:0}
+  .bf-ed input,.bf-ed textarea{width:100%;font-size:16px!important;background:#fff}
+  .bf-ed textarea{min-height:150px}
+  .bf-ed .opts{display:flex;flex-wrap:wrap;gap:6px}
+  .bf-ed .opts button{border:1px solid var(--line);background:#fff;color:var(--ink);font:700 13px var(--font);padding:10px 14px;cursor:pointer}
+  .bf-ed .opts button:hover{border-color:var(--ink)}
+  .bf-ed .opts button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .bf-ed .opts button.warn{color:#C2362B}
+  .bf-ed .hint2{font-size:11.5px;color:var(--muted);margin:0}
+  .bf-jump{position:fixed;right:14px;bottom:16px;z-index:60;border:0;background:var(--ink);color:#fff;font:700 13px var(--font);
+    padding:12px 16px;box-shadow:0 10px 26px rgba(11,13,18,.25);display:none;align-items:center;gap:8px;cursor:pointer;border-left:3px solid var(--blue)}
+  .bf-jump.on{display:flex}
+  .stage-head{gap:8px}
+  .bf-big{margin-left:auto;border:1px solid var(--line);background:#fff;color:var(--ink);font:700 12px var(--font);padding:7px 12px;cursor:pointer;letter-spacing:0}
+  .bf-big:hover{border-color:var(--ink)}
+  .bf-view{position:fixed;inset:0;z-index:200;background:rgba(8,10,16,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;animation:bfIn .15s ease-out}
+  .bf-view .sc{flex:1;width:100%;overflow:auto;display:flex;align-items:center;justify-content:center;touch-action:pinch-zoom pan-x pan-y;padding:16px}
+  .bf-view img{max-width:100%;max-height:100%;box-shadow:0 20px 60px rgba(0,0,0,.5);background:#fff}
+  .bf-view p{color:rgba(255,255,255,.6);font-size:12.5px;margin:0 0 18px;text-align:center;padding:0 16px}
+  .bf-view .x{position:absolute;top:12px;right:12px;width:44px;height:44px;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:18px;cursor:pointer;z-index:2}
+  #box{--ar:.647}
+  @media (max-width:1100px){
+    .canvas-box{max-width:min(100%,calc(58vh * var(--ar)))!important;margin-left:auto!important;margin-right:auto!important}
+  }
+</style>
+<script>
+/* 카드의 글자 · 사진을 눌러 바로 고치기 */
+(() => {
+  const cv=document.getElementById("card"), box=document.getElementById("box");
+  if(!cv||!box) return;
+  let hits=[];
+  window.HIT=function(c,spec,x,y,w,h){
+    if(!c||c.canvas!==cv||!(w>0&&h>0)) return;
+    const m=c.getTransform();
+    const P=[[x,y],[x+w,y],[x,y+h],[x+w,y+h]].map(([a,b])=>[m.a*a+m.c*b+m.e,m.b*a+m.d*b+m.f]);
+    const xs=P.map(p=>p[0]), ys=P.map(p=>p[1]);
+    hits.push({spec,x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)});
+  };
+  window.HIT.reset=()=>{ hits=[]; };
+
+  const px=e=>{ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)*cv.width/r.width,y:(e.clientY-r.top)*cv.height/r.height}; };
+  const find=p=>{
+    for(let i=hits.length-1;i>=0;i--){ const h=hits[i];
+      if(p.x>=h.x&&p.x<=h.x+h.w&&p.y>=h.y&&p.y<=h.y+h.h){
+        if(h.spec.img && h.spec.has && !h.spec.has()) return null;   /* 빈 사진 칸은 원래대로 파일 선택 */
+        return h; } }
+    return null; };
+  const css=h=>{ const r=cv.getBoundingClientRect(), k=r.width/cv.width, vw=document.documentElement.clientWidth;
+    return {x:r.left+scrollX+h.x*k, y:r.top+scrollY+h.y*k, w:h.w*k, h:h.h*k, minX:scrollX+8, maxX:scrollX+vw-8, vw}; };
+
+  /* 마우스 오버 표시 */
+  const hov=document.createElement("div"); hov.className="bf-hover"; document.body.appendChild(hov);
+  let down=null, ed=null;
+  cv.addEventListener("pointerdown",e=>{ down={x:e.clientX,y:e.clientY,t:Date.now(),moved:false}; hov.style.display="none"; },true);
+  cv.addEventListener("pointermove",e=>{
+    if(down){ if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>6) down.moved=true; return; }
+    if(e.pointerType!=="mouse") return;
+    const h=find(px(e));
+    if(h && !h.spec.img){ const r=css(h); Object.assign(hov.style,{display:"block",left:r.x-4+"px",top:r.y-4+"px",width:r.w+8+"px",height:r.h+8+"px"}); cv.style.cursor="pointer"; }
+    else hov.style.display="none";
+  });
+  cv.addEventListener("pointerleave",()=>{ hov.style.display="none"; });
+  cv.addEventListener("pointercancel",()=>{ down=null; });
+  cv.addEventListener("pointerup",e=>{
+    const d=down; down=null;
+    if(!d||d.moved||Date.now()-d.t>650) return;
+    const h=find(px(e));
+    if(h) setTimeout(()=>open(h),0); else close();
+  });
+
+  function close(){ if(ed){ ed.remove(); ed=null; } }
+  window.BFEDIT_CLOSE=close;
+  document.addEventListener("pointerdown",e=>{ if(ed && !ed.contains(e.target) && e.target!==cv) close(); },true);
+  function fire(el){ el.dispatchEvent(new Event("input",{bubbles:true})); }
+
+  function open(h){
+    close();
+    const s=h.spec, r=css(h);
+    ed=document.createElement("div"); ed.className="bf-ed";
+    const hd=document.createElement("div"); hd.className="hd";
+    hd.innerHTML=`<div><b>EDIT</b> <span></span></div><button type="button" class="ok">완료</button>`;
+    hd.querySelector("span").textContent=s.label||"";
+    hd.querySelector(".ok").onclick=close;
+    ed.appendChild(hd);
+    let field=null, width=260;
+
+    if(s.img||s.actions){
+      const o=document.createElement("div"); o.className="opts";
+      const acts=s.img?[["사진 바꾸기",s.img.file],["맞춤",s.img.fit],["지우기",s.img.clear,"warn"]]:s.actions;
+      acts.forEach(([t,sel,cls])=>{ const b=document.createElement("button"); b.type="button"; b.textContent=t; if(cls) b.className=cls;
+        b.onclick=()=>{ const el=document.querySelector(sel); close(); if(el) el.click(); }; o.appendChild(b); });
+      ed.appendChild(o);
+      if(s.img){ const p=document.createElement("p"); p.className="hint2"; p.textContent="사진은 드래그로 옮기고, 휠·핀치로 확대할 수 있어요."; ed.appendChild(p); }
+      width=280;
+    } else {
+      const el=document.querySelector(s.sel); if(!el){ close(); return; }
+      if(el.classList.contains("chips")){
+        const o=document.createElement("div"); o.className="opts";
+        const sync=()=>[...o.children].forEach((b,i)=>b.classList.toggle("on",el.children[i]&&el.children[i].getAttribute("aria-pressed")==="true"));
+        [...el.querySelectorAll(".chip")].forEach(ch=>{ const b=document.createElement("button"); b.type="button"; b.textContent=ch.textContent;
+          b.onclick=()=>{ ch.click(); sync(); setTimeout(close,120); }; o.appendChild(b); });
+        sync(); ed.appendChild(o); width=300;
+      } else {
+        const orig=el.value;
+        if(el.type==="range"){ field=document.createElement("input"); field.type="number"; field.min=el.min; field.max=el.max; field.inputMode="numeric"; }
+        else if(el.tagName==="TEXTAREA"){ field=document.createElement("textarea"); width=Math.max(360,r.w); }
+        else { field=document.createElement("input"); field.type="text";
+          ["maxLength","inputMode"].forEach(k=>{ if(el[k]>0||(k==="inputMode"&&el[k])) field[k]=el[k]; });
+          width=Math.max(240,Math.min(r.w+24,420)); }
+        field.placeholder=el.placeholder||""; field.value=el.value;
+        field.addEventListener("input",()=>{
+          let v=field.value;
+          if(el.type==="range"){ const n=Math.max(+el.min,Math.min(+el.max,parseInt(v,10)||0)); el.value=n; }
+          else el.value=v;
+          fire(el); });
+        field.addEventListener("keydown",e=>{
+          if(e.key==="Escape"){ el.value=orig; fire(el); close(); }
+          else if(e.key==="Enter" && (field.tagName!=="TEXTAREA" || e.metaKey || e.ctrlKey)){ e.preventDefault(); close(); }
+        });
+        ed.appendChild(field);
+        if(field.tagName==="TEXTAREA"){ const p=document.createElement("p"); p.className="hint2"; p.textContent="줄바꿈은 Enter, 닫기는 완료 버튼이나 바깥 클릭."; ed.appendChild(p); }
+      }
+    }
+    width=Math.min(width,r.vw-16);
+    ed.style.width=width+"px";
+    ed.style.left=Math.max(r.minX,Math.min(r.x,r.maxX-width))+"px";
+    ed.style.top=Math.max(scrollY+8,r.y-2)+"px";
+    document.body.appendChild(ed);
+    if(field){ field.focus({preventScroll:true}); if(field.select && field.tagName==="INPUT") field.select(); }
+    const rect=ed.getBoundingClientRect();
+    if(rect.bottom>innerHeight-10||rect.top<0) ed.scrollIntoView({block:"center",behavior:"smooth"});
+  }
+
+  /* 안내 문구 */
+  const tip=document.querySelector(".stage-bar .tip");
+  if(tip) tip.textContent="카드의 글자 · 사진을 눌러 바로 고칠 수 있어요 · 사진은 드래그로 이동, 휠/핀치로 확대";
+
+  /* 모바일: 미리보기로 돌아가는 버튼 */
+  const jump=document.createElement("button"); jump.type="button"; jump.className="bf-jump"; jump.textContent="미리보기 ↑";
+  jump.onclick=()=>{ (document.querySelector(".stage")||cv).scrollIntoView({behavior:"smooth",block:"start"}); };
+  document.body.appendChild(jump);
+  if("IntersectionObserver" in window){
+    const mq=matchMedia("(max-width:1100px)");
+    new IntersectionObserver(([en])=>{ jump.classList.toggle("on",!en.isIntersecting && mq.matches); }).observe(cv);
+  }
+  window.addEventListener("resize",close);
+  window.addEventListener("scroll",()=>{ hov.style.display="none"; },{passive:true});
+
+  /* 크게 보기 (화면 가득 · 손가락으로 확대) */
+  const head=document.querySelector(".stage-head");
+  if(head){
+    const big=document.createElement("button"); big.type="button"; big.className="bf-big"; big.textContent="크게 보기";
+    const last=head.lastElementChild; head.insertBefore(big,last); 
+    big.onclick=()=>{
+      close();
+      const ov=document.createElement("div"); ov.className="bf-view";
+      const land=cv.width>cv.height, rot=land && innerHeight>innerWidth*1.15;
+      ov.innerHTML=`<button type="button" class="x" aria-label="닫기">✕</button><div class="sc"><img alt="미리보기"></div><p>${rot?"가로 카드를 세로 화면에 맞춰 돌려서 보여줘요 · ":""}두 손가락으로 확대할 수 있어요</p>`;
+      const img=ov.querySelector("img"); img.src=cv.toDataURL("image/png");
+      if(rot){
+        /* 돌린 카드가 화면 안에 꼭 맞게: 가로 W, 세로 H 안에 들어가는 크기 계산 */
+        const ar=cv.width/cv.height, Wv=innerWidth-32, Hv=innerHeight-120;
+        const iw=Math.min(Hv,Wv*ar), ih=iw/ar;
+        const holder=document.createElement("div");
+        holder.style.cssText=`position:relative;width:${ih}px;height:${iw}px;flex:none`;
+        img.style.cssText=`position:absolute;left:50%;top:50%;width:${iw}px;height:${ih}px;max-width:none;max-height:none;transform:translate(-50%,-50%) rotate(90deg)`;
+        img.replaceWith(holder); holder.appendChild(img);
+      }
+      const shut=()=>{ ov.remove(); document.documentElement.style.overflow=""; };
+      ov.querySelector(".x").onclick=shut;
+      ov.addEventListener("click",e=>{ if(e.target===ov||e.target.classList.contains("sc")) shut(); });
+      document.addEventListener("keydown",function k(e){ if(e.key==="Escape"){ shut(); document.removeEventListener("keydown",k); } });
+      document.body.appendChild(ov); document.documentElement.style.overflow="hidden";
+    };
+  }
+})();
+</script>
+
 </body>
 </html>
